@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Add Signal Source</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='dashboard.css') }}?v=signal-sources-wizard-v9">
+    <script defer src="{{ url_for('static', path='signal_sources_settings.js') }}?v=signal-sources-wizard-v14"></script>
+  </head>
+  <body class="settings-page">
+    <main class="settings-main">
+      <header class="settings-header settings-header-with-action">
+        <div>
+          <p class="eyebrow">Settings / Signal Sources</p>
+          <h1>Add Source</h1>
+          <p>Connect a SQLite database and select the source table.</p>
+        </div>
+        <a class="back-to-sources" href="/settings/signal-sources">← Back to sources</a>
+      </header>
+
+      <nav class="source-wizard-progress" aria-label="Add source steps">
+        <ol>
+          <li class="is-active" data-wizard-indicator="1"><span>1</span><strong>Basic Information</strong></li>
+          <li data-wizard-indicator="2"><span>2</span><strong>Select Table</strong></li>
+          <li data-wizard-indicator="3"><span>3</span><strong>Field Mapping</strong></li>
+          <li data-wizard-indicator="4"><span>4</span><strong>Review &amp; Connect</strong></li>
+        </ol>
+      </nav>
+
+      <section class="settings-section source-wizard" aria-labelledby="add-source">
+        <div class="settings-section-heading">
+          <h2 id="add-source">Add SQLite source</h2>
+          <span class="settings-preview">Preview only</span>
+        </div>
+
+        <section class="source-wizard-step" data-wizard-step="1" aria-labelledby="basic-information-heading">
+          <h3 id="basic-information-heading">1. Basic Information</h3>
+          <form id="source-inspector-form" class="source-inspector-form" novalidate>
+            <label for="source-display-name">Source display name
+              <input id="source-display-name" name="display_name" type="text" autocomplete="off" required>
+            </label>
+            <label for="source-database-path">SQLite database path
+              <input id="source-database-path" name="database_path" type="text" autocomplete="off" required aria-describedby="source-path-note">
+            </label>
+            <p id="source-path-note" class="form-note">Enter an absolute path on the dashboard server. The SQLite file must be readable by the running dashboard process; it is opened read-only.</p>
+            <button type="submit">Check Connection</button>
+          </form>
+          <p id="source-inspector-status" class="source-inspector-status" role="status" aria-live="polite"></p>
+          <div class="source-wizard-actions">
+            <button id="source-step-one-next" type="button" class="wizard-next" disabled>Next: Select Table →</button>
+          </div>
+        </section>
+
+        <section class="source-wizard-step" data-wizard-step="2" aria-labelledby="select-table-heading" hidden>
+          <h3 id="select-table-heading">2. Select Table</h3>
+          <p class="form-note">Choose a table from the successfully checked SQLite database.</p>
+          <div id="source-schema" class="source-schema">
+            <label for="source-table">Available tables
+              <select id="source-table" disabled aria-describedby="source-table-feedback"></select>
+            </label>
+            <p id="source-table-feedback" class="source-inspector-status" role="status" aria-live="polite"></p>
+            <div>
+              <h4>Available columns</h4>
+              <ul id="source-columns" class="source-columns"></ul>
+            </div>
+          </div>
+          <div class="source-wizard-actions">
+            <button id="source-step-two-back" type="button" class="wizard-back">← Previous</button>
+            <button id="source-step-two-next" type="button" class="wizard-next" disabled>Next: Field Mapping →</button>
+          </div>
+        </section>
+
+        <section class="source-wizard-step" data-wizard-step="3" aria-labelledby="field-mapping-heading" hidden>
+          <h3 id="field-mapping-heading">3. Field Mapping</h3>
+          <p class="form-note">Select the source columns containing each signal’s ID, symbol, timestamp and type. Required fields are marked with <span class="required-mark" aria-hidden="true">*</span></p>
+          <div id="source-field-mapping" class="source-field-mapping">
+            <fieldset class="mapping-group">
+              <legend>Required fields</legend>
+              <label><span>Unique event ID<span class="required-mark" aria-hidden="true">*</span></span>
+                <select id="mapping-event-id" data-mapping-column="event-id" data-mapping-label="Unique event ID" required disabled></select>
+              </label>
+              <label><span>Symbol<span class="required-mark" aria-hidden="true">*</span></span>
+                <select id="mapping-symbol" data-mapping-column="symbol" data-mapping-label="Symbol" required disabled></select>
+              </label>
+              <label><span>Event timestamp<span class="required-mark" aria-hidden="true">*</span></span>
+                <select id="mapping-timestamp" data-mapping-column="timestamp" data-mapping-label="Event timestamp" required disabled></select>
+              </label>
+            </fieldset>
+
+            <fieldset class="mapping-group">
+              <legend>Signal type<span class="required-mark" aria-hidden="true">*</span></legend>
+              <label class="mapping-choice"><input type="radio" name="signal-type-mode" value="column" checked><span><strong>Source column</strong><small>Read signal types from a column in the database.</small></span></label>
+              <div class="signal-type-column-row">
+                <select id="mapping-signal-type-column" data-mapping-column="signal-type" data-mapping-label="Signal type" required disabled></select>
+                <span id="signal-type-suggestion" class="signal-type-suggestion" hidden>Automatically selected · Changeable</span>
+              </div>
+              <div id="signal-type-mapping-panel" class="signal-type-mapping-panel">
+                <p class="form-note">Select which signals to import and choose how they will appear in the dashboard.</p>
+                <div id="signal-type-mapping-rows"></div>
+              </div>
+              <label class="mapping-choice"><input type="radio" name="signal-type-mode" value="fixed"><span><strong>Fixed registered type</strong><small>Assign one signal type to all rows in the selected table.</small></span></label>
+              <select id="mapping-signal-type-fixed" data-fixed-signal-type hidden disabled>
+                <option value="">Select a registered type</option>
+                {% for signal_type in registered_signal_types %}
+                <option value="{{ signal_type.event_type }}">{{ signal_type.display_name }} ({{ signal_type.event_type }})</option>
+                {% endfor %}
+              </select>
+              <div id="fixed-type-mapping-rows" class="signal-type-mapping-panel" hidden></div>
+            </fieldset>
+
+            <p class="form-note">All source columns are retained as event metadata.</p>
+          </div>
+          <p id="source-mapping-feedback" class="source-inspector-status" role="status" aria-live="polite"></p>
+          <div class="source-wizard-actions">
+            <button id="source-step-three-back" type="button" class="wizard-back">← Previous</button>
+            <div class="source-wizard-actions-end">
+              <button id="source-step-three-next" type="button" class="wizard-next" disabled>Next: Review &amp; Connect →</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="source-wizard-step" data-wizard-step="4" aria-labelledby="review-connect-heading" hidden>
+          <h3 id="review-connect-heading">4. Review &amp; Connect</h3>
+          <p class="form-note">This is a preview, not an import. Up to 10 matching signal examples are shown. Connecting only saves the source and its type settings. Import events separately after connecting.</p>
+          <div id="source-preview-summary" class="source-preview-summary"></div>
+          <p id="source-preview-feedback" class="source-inspector-status" role="status" aria-live="polite"></p>
+          <div id="source-preview-results" class="source-preview-results" hidden>
+            <h4>Preview events</h4>
+            <div id="source-preview-events" class="source-preview-events"></div>
+            <div id="source-preview-rejected" class="source-preview-rejected" hidden><h4>Invalid preview rows</h4><ul></ul></div>
+          </div>
+          <div class="source-wizard-actions">
+            <button id="source-step-four-back" type="button" class="wizard-back">← Previous</button>
+            <button id="source-connect" type="button" class="wizard-next">Connect Source</button>
+          </div>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Signal Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='vendor/flatpickr-4.6.13/flatpickr.min.css') }}?v=4.6.13">
+    <link rel="stylesheet" href="{{ url_for('static', path='dashboard.css') }}?v=display-timezone1">
+    <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+    <script>window.SignalTypeRegistry = Object.freeze({{ signal_type_registry | tojson }});</script>
+    <script defer src="{{ url_for('static', path='signal_type_registry.js') }}"></script>
+    <script defer src="{{ url_for('static', path='vendor/flatpickr-4.6.13/flatpickr.min.js') }}?v=4.6.13"></script>
+    <script defer src="{{ url_for('static', path='dashboard.js') }}?v={{ dashboard_javascript_version }}"></script>
+    {% if request.app.state.signal_sources_navigation | default(false) %}<script defer src="{{ url_for('static', path='global_settings.js') }}?v=1"></script>{% endif %}
+  </head>
+  <body>
+    <aside class="sidebar" aria-label="Signal symbols">
+      <label class="sr-only" for="symbol-search">Search symbols</label>
+      <div class="symbol-search-control">
+        <svg class="symbol-search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
+        <input id="symbol-search" type="search" autocomplete="off" aria-label="Search symbols">
+      </div>
+      <div class="filters" role="group" aria-label="Event type filter" data-active-filter="{{ event_filter }}" data-available-types="{{ available_event_types | default([]) | tojson | forceescape }}"></div>
+      <nav id="symbol-list">
+        {% for item in symbols %}
+        <a
+          class="symbol{% if selected and item.symbol == selected.symbol %} is-selected{% endif %}"
+          href="/?symbol={{ item.symbol | urlencode }}&amp;filter={{ event_filter }}"
+          data-symbol="{{ item.symbol }}"
+          data-base-symbol="{{ item.symbol.removesuffix('USDT') }}"
+        >
+          <span class="symbol-name">{{ item.symbol.removesuffix('USDT') }}</span>
+          <span class="signal-counters" data-event-type-counts='{{ item.event_type_counts | tojson }}' data-event-type-latest-at='{{ item.event_type_latest_at | tojson }}'></span>
+          <time datetime="{{ item.latest_event.event_at }}">{{ item.latest_event_time }}</time>
+        </a>
+        {% endfor %}
+      </nav>
+      <p id="empty-results" hidden>No matching symbols.</p>
+    </aside>
+    <main>
+      {% if request.app.state.signal_sources_navigation | default(false) %}
+      <nav class="global-navigation" aria-label="Dashboard settings">
+        <div class="global-settings">
+          <button id="global-settings-button" type="button" aria-expanded="false" aria-controls="global-settings-menu"><span aria-hidden="true">⚙</span> Settings</button>
+          <div id="global-settings-menu" class="global-settings-menu" hidden><a href="/settings/signal-sources">Signal Sources</a><a href="/settings/signal-types">Signal Types</a></div>
+        </div>
+      </nav>
+      {% endif %}
+      {% if selected %}
+      <div class="dashboard-header">
+        <div class="dashboard-chart-header">
+          <h2>{{ selected.symbol.removesuffix('USDT') }}</h2>
+          <section class="market-summary" data-symbol="{{ selected.symbol }}" aria-label="{{ selected.symbol }} live market summary">
+            <div class="market-summary-heading">
+              <span>Bybit linear market</span>
+              <small id="market-summary-status" class="market-summary-status" aria-live="polite"></small>
+            </div>
+            <dl class="market-summary-values">
+              <div class="market-price"><dt>Price</dt><dd data-market-field="lastPrice"><span data-market-price>—</span><span data-market-price-change>—</span><span class="sr-only">24h Change</span></dd></div>
+              <div><dt>24h High</dt><dd data-market-field="highPrice24h">—</dd></div>
+              <div><dt>24h Low</dt><dd data-market-field="lowPrice24h">—</dd></div>
+              <div><dt>24h Turnover</dt><dd data-market-field="turnover24h">—</dd></div>
+              <div><dt>Open Interest</dt><dd data-market-field="openInterestValue">—</dd></div>
+              <div><dt>Funding Rate</dt><dd data-market-field="fundingRate">—</dd></div>
+              <div><dt>Funding Countdown</dt><dd data-market-field="nextFundingTime">—</dd></div>
+            </dl>
+          </section>
+        </div>
+      </div>
+      <div class="dashboard-content">
+        <section class="chart-panel" aria-label="{{ selected.symbol }} market charts">
+          <div id="local-signal-filters" class="local-signal-filters" role="group" aria-label="Local signal type filter"></div>
+          <div class="timeframes" role="group" aria-label="Chart timeframe">
+            <label class="market-data-source" for="market-data-source">
+              <span>Source</span>
+              <select id="market-data-source" data-default-source="{{ default_market_source }}">
+                {% for source in market_data_sources %}
+                <option value="{{ source.id }}"{% if source.id == default_market_source %} selected{% endif %}{% if not source.available %} disabled{% endif %}>{{ source.label }}{% if not source.available %} (unavailable){% endif %}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <div class="timeframe-toolbar">
+              <div id="timeframe-buttons" class="timeframe-buttons"></div>
+              <div class="timeframe-settings-control">
+                <button id="timeframe-settings" class="timeframe-settings" type="button" aria-expanded="false" aria-controls="timeframe-settings-panel"{% if request.app.state.signal_sources_navigation | default(false) %} aria-label="Chart settings" title="Chart settings"{% endif %}>{% if request.app.state.signal_sources_navigation | default(false) %}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h5m4 0h7M4 12h9m4 0h3M4 18h3m4 0h9M9 4v4m8 2v4m-10 2v4"/></svg>{% else %}⚙{% endif %}</button>
+              </div>
+              <div id="timeframe-settings-panel" class="timeframe-settings-panel" hidden></div>
+            </div>
+            <button id="measurement-ruler" class="measurement-ruler-button" type="button" aria-label="Measure" aria-pressed="false" title="Measure">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16 16 4l4 4L8 20H4v-4Zm5-1 2 2m1-5 2 2m1-5 2 2"/></svg>
+            </button>
+            <div class="date-jump">
+              <span id="chart-date-status" class="date-jump-status" role="status" aria-live="polite"></span>
+              <label for="chart-date">Jump to date</label>
+              <div id="chart-date-picker" class="date-jump-picker">
+                <div class="date-jump-segments" role="group" aria-label="Date in day, month, year order">
+                  <input id="chart-date-day" class="date-segment-input" type="text" inputmode="numeric" maxlength="2" autocomplete="off" aria-label="Day" aria-describedby="chart-date-status">
+                  <span class="date-segment-separator" aria-hidden="true">.</span>
+                  <input id="chart-date-month" class="date-segment-input" type="text" inputmode="numeric" maxlength="2" autocomplete="off" aria-label="Month" aria-describedby="chart-date-status">
+                  <span class="date-segment-separator" aria-hidden="true">.</span>
+                  <input id="chart-date-year" class="date-segment-input date-segment-year" type="text" inputmode="numeric" maxlength="4" autocomplete="off" aria-label="Year" aria-describedby="chart-date-status">
+                </div>
+                <input id="chart-date" type="hidden" data-input>
+                <button class="date-jump-calendar" type="button" data-toggle aria-label="Choose date from calendar" title="Choose date from calendar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v3m10-3v3M4 9h16M6 5h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Zm2 8h3m2 0h3m-8 3h3"/></svg></button>
+              </div>
+              <button id="chart-date-go" type="button">Go</button>
+            </div>
+          </div>
+          <div class="chart-stack">
+            <div id="chart" data-symbol="{{ selected.symbol }}" aria-label="{{ selected.symbol }} price chart"></div>
+            <div id="volume-chart" aria-label="{{ selected.symbol }} volume chart"></div>
+            <div id="open-interest-chart" aria-label="{{ selected.symbol }} open interest chart"></div>
+            <div id="chart-error" class="chart-error" role="alert" hidden>
+              <div class="chart-error-card">
+                <svg class="chart-error-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5m0 14h16M7 15l3-4 3 2 4-6"/></svg>
+                <strong>Failed to load chart</strong>
+                <span id="chart-error-message"></span>
+                <button id="chart-retry" type="button">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0 2 5.3M20 4v7h-7"/></svg>
+                  Retry
+                </button>
+              </div>
+            </div>
+          </div>
+          <p id="chart-empty" hidden>No historical candles are available for this symbol.</p>
+          <div id="display-timezone-control" class="display-timezone-control">
+            <button id="display-timezone-button" type="button" aria-expanded="false" aria-controls="display-timezone-menu" aria-label="Display timezone"></button>
+            <div id="display-timezone-menu" class="display-timezone-menu" role="menu" aria-label="Display timezone" hidden></div>
+          </div>
+        </section>
+        <section class="event-panel" aria-label="All {{ selected.symbol }} events">
+          <h3>{{ selected.symbol.removesuffix('USDT') }}</h3>
+          <div class="event-cards" role="list">
+            {% for event in selected_events %}
+            <article class="event-card event-card-{{ event.tone }}" role="listitem" tabindex="0" data-event-id="{{ event.event_id }}" data-event-at="{{ event.event_timestamp }}" data-event-display-at="{{ event.event_at }}" data-event-type="{{ event.event_type }}" data-event-price="{{ event.event_price or '' }}" data-source-interval="{{ event.source_interval or '' }}" data-alert-level="{{ event.alert_level or '' }}" data-direction="{{ event.direction or '' }}" data-exchange="{{ event.exchange }}" data-primary-signal-id="{{ event.primary_signal_id }}" data-metadata='{{ event.metadata | tojson }}' data-compact-fields='{{ event.compact_fields | tojson }}' data-detail-fields='{{ event.detail_fields | tojson }}'>
+              <div class="event-card-header event-card-configured-header">
+                <time>{{ event.event_at.removesuffix(' MSK') }}</time>
+                <span class="event-type event-type-{{ event.tone }}">{{ event.display_name }}</span>
+                <button class="event-card-detail-open" type="button" aria-label="Open {{ event.display_name }} details">›</button>
+              </div>
+            </article>
+            {% endfor %}
+          </div>
+        </section>
+      </div>
+      {% else %}
+      <p class="empty-state">No dashboard events are available yet.</p>
+      {% endif %}
+    </main>
+    <dialog id="hyperliquid-history-dialog" class="source-edit-dialog history-unavailable-dialog" aria-labelledby="hyperliquid-history-title" aria-describedby="hyperliquid-history-message">
+      <div class="source-edit-form">
+        <h2 id="hyperliquid-history-title">Historical candles unavailable</h2>
+        <p id="hyperliquid-history-message"></p>
+        <div class="source-wizard-actions-end">
+          <button id="hyperliquid-history-okay" type="button">Okay</button>
+        </div>
+      </div>
+    </dialog>
+  </body>
+</html>

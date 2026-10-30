@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Signal Sources Settings</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='dashboard.css') }}?v=signal-sources-table3">
+    <script defer src="{{ url_for('static', path='signal_sources_overview.js') }}?v=table4"></script>
+  </head>
+  <body class="settings-page">
+    <main class="settings-main">
+      <header class="settings-header settings-header-with-action">
+        <div>
+          <p class="eyebrow"><a class="back-to-dashboard" href="/">← Dashboard</a> / Settings</p>
+          <h1>Signal Sources</h1>
+          <p>Connect and manage signal sources</p>
+        </div>
+        <a class="add-source-button" href="/settings/signal-sources/add">+ Add Source</a>
+      </header>
+
+      <section class="sources-table-panel" aria-labelledby="sources-table-heading">
+        <h2 id="sources-table-heading" class="sr-only">Configured signal sources</h2>
+        <div class="sources-table-scroll">
+          <table class="sources-table">
+            <thead>
+              <tr>
+                <th scope="col">Name</th>
+                <th scope="col">Type</th>
+                <th scope="col">Signal Types</th>
+                <th scope="col">Database / Table</th>
+                <th scope="col">Visibility</th>
+                <th scope="col">Last Import</th>
+                <th scope="col">Events</th>
+                <th scope="col">Import</th>
+                <th scope="col">Auto Sync</th>
+                <th scope="col" class="source-actions-heading"><span class="sr-only">More actions</span>⋯</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% if sources %}
+          {% for source in sources %}
+              <tr>
+                <th scope="row">{{ source.display_name or source.source_id }}</th>
+                <td><span class="source-type">SQLite</span></td>
+                {% set configured_types = (source_signal_types | default({})).get(source.source_id, []) %}
+                <td>{% if configured_types %}<div class="source-type-details"><button type="button" class="source-type-details-toggle" aria-expanded="false">{{ configured_types[0].short_label if configured_types | length == 1 else (configured_types | length ~ ' types') }}</button><div class="source-type-detail-list" hidden>{% for signal in configured_types %}<span>{{ signal.display_name }}{% if configured_types | length > 1 %} ({{ signal.short_label }}){% endif %}</span>{% endfor %}</div></div>{% else %}<span class="source-placeholder">—</span>{% endif %}</td>
+                <td class="source-location"><span>{{ source.database_path }}</span><span>{{ source.table_name }}</span></td>
+                <td><button class="toggle-source-button {{ 'is-enabled' if source.is_visible else 'is-disabled' }}" type="button" data-source-id="{{ source.source_id }}" data-enabled="{{ 'true' if source.is_visible else 'false' }}" aria-pressed="{{ 'true' if source.is_visible else 'false' }}" aria-label="Visibility for {{ source.display_name or source.source_id }}">{{ 'Enabled' if source.is_visible else 'Disabled' }}</button><span class="source-visibility-error" role="status" aria-live="polite"></span></td>
+                {% set metrics = (source_metrics | default({})).get(source.source_id) %}
+                <td class="source-last-import" data-source-id="{{ source.source_id }}">{% if metrics and metrics.last_import %}<time class="source-last-import-time" datetime="{{ metrics.last_import }}">Local time…</time>{% else %}<span class="source-placeholder" title="No recorded successful import time">—</span>{% endif %}</td>
+                <td class="source-event-count" data-source-id="{{ source.source_id }}">{% if metrics %}{{ metrics.events }}{% else %}<span class="source-placeholder" title="Event count unavailable">—</span>{% endif %}</td>
+                <td>{% if source.source_id.startswith('sqlite-') %}<button class="import-source-button" type="button" aria-label="Import Signals" data-source-id="{{ source.source_id }}">Import</button>{% else %}<span class="source-placeholder">—</span>{% endif %}</td>
+                <td>{% if source.source_id.startswith('sqlite-') %}<button class="auto-sync-button {{ 'is-enabled' if source.automatic_sync_enabled else 'is-disabled' }}" type="button" data-source-id="{{ source.source_id }}" data-source-name="{{ source.display_name or source.source_id }}" data-sync-enabled="{{ 'true' if source.automatic_sync_enabled else 'false' }}" aria-label="Auto Sync {{ 'on' if source.automatic_sync_enabled else 'off' }}">{{ 'On' if source.automatic_sync_enabled else 'Off' }}</button><span class="auto-sync-error" role="status" aria-live="polite"></span>{% else %}<span class="source-placeholder">—</span>{% endif %}</td>
+                <td class="source-actions-cell">
+                  <button type="button" class="source-menu-toggle" aria-expanded="false" aria-label="More actions for {{ source.display_name or source.source_id }}">⋯</button>
+                  <div class="source-menu-popup" hidden>
+                    {% if source.source_id.startswith('sqlite-') %}<button class="edit-source-button" type="button" data-source-id="{{ source.source_id }}" data-source-name="{{ source.display_name or source.source_id }}">Edit source</button>{% endif %}
+                    {% if source.source_origin == 'universal_wizard_v1' and source.source_id.startswith('sqlite-') %}
+                    <button class="remove-source-button" type="button" data-source-id="{{ source.source_id }}" data-source-name="{{ source.display_name or source.source_id }}">Remove source</button>
+                    {% else %}<span class="source-removal-unavailable">Safe removal is unavailable for older sources.</span>{% endif %}
+                  </div>
+                </td>
+              </tr>
+          {% endfor %}
+            {% else %}
+              <tr>
+                <td class="sources-table-empty" colspan="10">No external SQLite sources are configured.</td>
+              </tr>
+            {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+    <dialog id="source-removal-dialog" class="source-edit-dialog" aria-labelledby="source-removal-title">
+      <div class="source-edit-form">
+        <h2 id="source-removal-title">Remove signal source</h2>
+        <p id="source-removal-explanation">Review the removal plan before confirming.</p>
+        <dl class="source-import-details">
+          <div><dt>Source</dt><dd id="source-removal-name"></dd></div>
+          <div><dt>Source ID</dt><dd id="source-removal-id"></dd></div>
+          <div><dt>Events</dt><dd id="source-removal-count">—</dd></div>
+          <div><dt>Remove types</dt><dd id="source-removal-exclusive">—</dd></div>
+          <div><dt>Keep types</dt><dd id="source-removal-retained">—</dd></div>
+        </dl>
+        <p id="source-removal-status" role="status" aria-live="polite"></p>
+        <div class="source-edit-actions source-removal-actions">
+          <button type="button" class="source-removal-cancel-pending" hidden>Cancel pending removal</button>
+          <button type="button" class="source-removal-recheck" hidden>Check status</button>
+          <button type="button" class="source-removal-close">Close</button>
+          <button type="button" class="source-edit-save source-removal-confirm" disabled>Confirm removal</button>
+        </div>
+      </div>
+    </dialog>
+    <dialog id="source-import-dialog" class="source-edit-dialog" aria-labelledby="source-import-title">
+      <div class="source-edit-form">
+        <h2 id="source-import-title">One-time signal import</h2>
+        <p>This is a one-time import. It does not enable automatic synchronization.</p>
+        <p>Initial import can read and insert the entire available signal history. Overlapping sources can produce duplicate logical events.</p>
+        <dl class="source-import-details">
+          <div><dt>Source</dt><dd id="source-import-name"></dd></div>
+          <div><dt>Database</dt><dd id="source-import-database"></dd></div>
+          <div><dt>Table</dt><dd id="source-import-table"></dd></div>
+          <div><dt>Source ID</dt><dd id="source-import-id"></dd></div>
+        </dl>
+        <p id="source-import-status" role="status" aria-live="polite"></p>
+        <div class="source-edit-actions">
+          <button type="button" class="source-import-cancel">Cancel</button>
+          <button type="button" class="source-edit-save source-import-confirm">Confirm Import</button>
+        </div>
+      </div>
+    </dialog>
+    <dialog id="source-edit-dialog" class="source-edit-dialog source-edit-dialog-wide" aria-labelledby="source-edit-title">
+      <form id="source-edit-form" method="dialog" class="source-edit-form">
+        <div id="source-edit-dialog-header" class="source-edit-dialog-header"><h2 id="source-edit-title">Edit source</h2></div>
+        <p id="source-edit-explanation">Connection settings remain unchanged. Import selections affect future manual imports and Auto Sync only; existing events are retained.</p>
+        <label for="source-edit-name">Source display name
+          <input id="source-edit-name" name="display_name" type="text" required autocomplete="off">
+        </label>
+        <fieldset id="source-edit-types" hidden>
+          <legend>Import signal types</legend>
+          <p>Choose source signal types to import. New types require a Full Name and Label.</p>
+          <div id="source-edit-type-list"></div>
+        </fieldset>
+        <div id="source-edit-discovery" class="source-edit-discovery" role="status" aria-live="polite" hidden>
+          <span id="source-edit-discovery-message"></span>
+          <button id="source-edit-discovery-retry" type="button" hidden>Retry</button>
+        </div>
+        <p id="source-edit-status" class="source-edit-status" role="status" aria-live="polite"></p>
+        <div class="source-edit-actions">
+          <button type="button" class="source-edit-cancel">Cancel</button>
+          <button type="submit" class="source-edit-save">Save changes</button>
+        </div>
+      </form>
+    </dialog>
+  </body>
+</html>

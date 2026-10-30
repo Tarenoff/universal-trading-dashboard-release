@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "universal-trading-dashboard"
+version = "1.0.0"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "httpx",
+    "jinja2>=3.1",
+    "uvicorn>=0.30",
+]
+
+[project.scripts]
+universal-trading-dashboard = "dashboard.portable_runner:main"
+universal-trading-dashboard-sync = "dashboard.portable_sync_runner:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+dashboard = [
+    "templates/*.html",
+    "static/*.css",
+    "static/*.js",
+    "static/vendor/flatpickr-4.6.13/*",
+]

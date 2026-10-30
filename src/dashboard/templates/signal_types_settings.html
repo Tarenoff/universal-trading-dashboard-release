@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Signal Types Settings</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='dashboard.css') }}?v=signal-types-v7">
+    {% if editing_available %}<script defer src="{{ url_for('static', path='signal_types_settings.js') }}?v=5"></script><script defer src="{{ url_for('static', path='custom_signal_builder.js') }}?v=1"></script>{% endif %}
+  </head>
+  <body class="settings-page">
+    <main class="settings-main">
+      <header class="settings-header">
+        <p class="eyebrow"><a class="back-to-dashboard" href="/">← Dashboard</a> / Settings</p>
+        <h1>Signal Types</h1>
+      </header>
+      <section class="sources-table-panel" aria-label="Source signals">
+        <h2 class="settings-section-title">Source Signals</h2>
+        <div class="sources-table-scroll">
+          <table class="sources-table">
+            <thead><tr><th scope="col">Full Name</th><th scope="col">Label</th><th scope="col">Marker</th><th scope="col">Position</th>{% if editing_available %}<th scope="col"></th>{% endif %}</tr></thead>
+            <tbody>
+              {% for signal_type in signal_types %}
+              <tr>
+                <th scope="row">{{ signal_type.display_name }}</th>
+                <td>{{ signal_type.short_label }}</td>
+                <td><span class="signal-type-preview" aria-hidden="true"><svg viewBox="0 0 24 24" fill="{{ signal_type.color }}">{% if signal_type.marker_shape == 'circle' %}<circle cx="12" cy="12" r="7"/>{% elif signal_type.marker_shape == 'square' %}<rect x="5" y="5" width="14" height="14"/>{% elif signal_type.marker_shape == 'diamond' %}<path d="M12 3 21 12 12 21 3 12z"/>{% elif signal_type.marker_shape == 'triangleUp' %}<path d="M12 3 21 21H3z"/>{% elif signal_type.marker_shape == 'triangleDown' %}<path d="M12 21 21 3H3z"/>{% elif signal_type.marker_shape == 'star' %}<path d="m12 2.5 2.7 5.6 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>{% elif signal_type.marker_shape == 'target' %}<circle cx="12" cy="12" r="7" fill="none" stroke="{{ signal_type.color }}" stroke-width="2"/><circle cx="12" cy="12" r="2.5"/>{% elif signal_type.marker_shape == 'flag' %}<path d="M6 3v18h2v-7.6l8-.7-2.8-3.2L16 6 8 6.8V3z"/>{% elif signal_type.marker_shape == 'arrowUp' %}<path d="M12 3 3 12h5v9h8v-9h5z"/>{% elif signal_type.marker_shape == 'arrowDown' %}<path d="M8 3h8v9h5l-9 9-9-9h5z"/>{% endif %}</svg></span></td>
+                <td>{{ signal_type.marker_position }}</td>
+                {% if editing_available %}<td><button class="edit-source-button signal-type-edit" type="button" data-type-id="{{ signal_type.event_type }}" data-display-name="{{ signal_type.display_name }}" data-short-label="{{ signal_type.short_label }}" data-color="{{ signal_type.color }}" data-marker-shape="{{ signal_type.marker_shape }}" data-marker-position="{{ signal_type.marker_position }}" data-card-sources='{{ card_layout_sources.get(signal_type.event_type, []) | tojson }}'>Edit</button></td>{% endif %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+      {% if editing_available %}
+      <section class="sources-table-panel custom-signals-panel" aria-label="Custom signals">
+        <div class="settings-section-heading"><h2 class="settings-section-title">Custom Signals</h2><button id="add-custom-signal" class="add-source-button" type="button">+ Create Signal</button></div>
+        <p class="custom-signal-note">When several enabled definitions match one event, the first one in this list wins.</p>
+        <div class="sources-table-scroll"><table class="sources-table custom-signals-table"><thead><tr><th>Full Name</th><th>Label</th><th>Source</th><th>Filters</th><th>Events</th><th>Marker</th><th>Position</th><th>Status</th><th></th></tr></thead><tbody>
+          {% for signal in custom_signals %}<tr><th scope="row">{{ signal.display_name }}</th><td>{{ signal.presentation.short_label }}</td><td>{% for source in sources %}{% if source.source_id == signal.source_id %}{{ source.display_name }}{% endif %}{% endfor %}</td><td>{{ signal.conditions | length }}</td><td>{{ signal.event_count }}</td><td><span class="signal-type-preview" aria-hidden="true"><svg viewBox="0 0 24 24" fill="{{ signal.presentation.color }}">{% if signal.presentation.marker_shape == 'circle' %}<circle cx="12" cy="12" r="7"/>{% elif signal.presentation.marker_shape == 'square' %}<rect x="5" y="5" width="14" height="14"/>{% elif signal.presentation.marker_shape == 'diamond' %}<path d="M12 3 21 12 12 21 3 12z"/>{% elif signal.presentation.marker_shape == 'triangleUp' %}<path d="M12 3 21 21H3z"/>{% elif signal.presentation.marker_shape == 'triangleDown' %}<path d="M12 21 21 3H3z"/>{% elif signal.presentation.marker_shape == 'star' %}<path d="m12 2.5 2.7 5.6 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>{% elif signal.presentation.marker_shape == 'target' %}<circle cx="12" cy="12" r="7" fill="none" stroke="{{ signal.presentation.color }}" stroke-width="2"/><circle cx="12" cy="12" r="2.5"/>{% elif signal.presentation.marker_shape == 'flag' %}<path d="M6 3v18h2v-7.6l8-.7-2.8-3.2L16 6 8 6.8V3z"/>{% elif signal.presentation.marker_shape == 'arrowUp' %}<path d="M12 3 3 12h5v9h8v-9h5z"/>{% elif signal.presentation.marker_shape == 'arrowDown' %}<path d="M8 3h8v9h5l-9 9-9-9h5z"/>{% endif %}</svg></span></td><td>{{ signal.presentation.marker_position }}</td><td><button class="custom-signal-toggle {{ 'is-enabled' if signal.enabled else '' }}" type="button" data-id="{{ signal.id }}" data-enabled="{{ signal.enabled | tojson }}">{{ "Enabled" if signal.enabled else "Disabled" }}</button></td><td class="custom-signal-actions"><button class="edit-source-button custom-signal-edit" type="button" data-id="{{ signal.id }}" data-name="{{ signal.display_name }}" data-label="{{ signal.short_label }}" data-source-id="{{ signal.source_id }}" data-conditions='{{ signal.conditions | tojson }}'>Edit Definition</button> <button class="edit-source-button signal-type-edit" type="button" data-type-id="{{ signal.id }}" data-display-name="{{ signal.presentation.display_name }}" data-short-label="{{ signal.presentation.short_label }}" data-color="{{ signal.presentation.color }}" data-marker-shape="{{ signal.presentation.marker_shape }}" data-marker-position="{{ signal.presentation.marker_position }}" data-card-sources='[{{ {"id": signal.source_id, "display_name": "Custom"} | tojson }}]'>Appearance / Cards</button> <button class="edit-source-button custom-signal-delete" type="button" data-id="{{ signal.id }}" data-name="{{ signal.display_name }}">Delete</button></td></tr>{% else %}<tr><td class="sources-table-empty" colspan="9">No custom signals yet.</td></tr>{% endfor %}
+        </tbody></table></div>
+      </section>
+      <dialog id="custom-signal-dialog" class="source-edit-dialog" aria-label="Custom Signal builder"><form id="custom-signal-form" class="source-edit-form"><div id="custom-signal-dialog-header" class="signal-type-dialog-header"><span></span><button id="custom-signal-close" type="button" aria-label="Close">×</button></div><label>Full Name <input name="display_name" required maxlength="80" autocomplete="off"></label><label>Label <input name="short_label" required maxlength="3" autocomplete="off"></label><label>Source <select name="source_id" required><option value="">Select a source</option>{% for source in sources %}<option value="{{ source.source_id }}">{{ source.display_name }}</option>{% endfor %}</select></label><fieldset><legend>Filters — all conditions must match</legend><div id="custom-signal-filters"></div><button id="custom-signal-add-filter" type="button">Add Filter</button></fieldset><p id="custom-signal-status" role="status" aria-live="polite"></p><div class="source-edit-actions"><button id="custom-signal-submit" type="submit" class="source-edit-save">Create Signal</button></div></form></dialog>
+      <dialog id="custom-signal-delete-dialog" class="source-edit-dialog" aria-label="Delete custom signal"><div class="source-edit-form"><p>Delete <strong id="custom-signal-delete-name"></strong>?</p><p id="custom-signal-delete-status" class="source-edit-status" role="status" aria-live="polite"></p><div class="source-edit-actions"><button id="custom-signal-delete-cancel" type="button">Cancel</button><button id="custom-signal-delete-confirm" type="button" class="source-edit-save">Delete Signal</button></div></div></dialog>
+      {% endif %}
+    </main>
+    {% if editing_available %}
+    <dialog id="signal-type-dialog" class="source-edit-dialog signal-type-dialog" aria-label="Signal type settings">
+      <form id="signal-type-form" class="source-edit-form">
+        <div id="signal-type-dialog-header" class="signal-type-dialog-header"><div class="signal-type-tabs" role="tablist" aria-label="Signal type settings"><button type="button" role="tab" id="signal-type-tab-appearance" aria-selected="true" aria-controls="signal-type-panel-appearance">Appearance</button><button type="button" role="tab" id="signal-type-tab-cards" aria-selected="false" aria-controls="signal-type-panel-cards">Cards</button></div><button id="signal-type-close" type="button" aria-label="Close settings">×</button></div>
+        <section id="signal-type-panel-appearance" role="tabpanel" aria-labelledby="signal-type-tab-appearance" aria-hidden="false">
+          <label>Display name <input name="display_name" required maxlength="30"><small id="signal-type-name-count">0 / 30</small></label>
+          <label>Short label <input name="short_label" required maxlength="3"><small id="signal-type-label-count">0 / 3</small></label>
+          <label>Marker color <input name="color" type="color" required></label>
+          <div class="signal-type-marker-editor">
+            <fieldset id="signal-type-shape-picker" class="signal-type-shape-picker" aria-label="Marker shape">
+              <legend>Marker shape</legend>
+              <input name="marker_shape" type="hidden">
+              <div class="signal-type-shape-grid" role="radiogroup" aria-label="Marker shape">
+                <button type="button" class="signal-type-shape-option" role="radio" aria-label="Circle" title="Circle" data-marker-shape="circle"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="7"/></svg></button>
+                <button type="button" class="signal-type-shape-option" role="radio" aria-label="Square" title="Square" data-marker-shape="square"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="5" y="5" width="14" height="14"/></svg></button>
+                <button type="button" class="signal-type-shape-option" role="radio" aria-label="Arrow up" title="Arrow up" data-marker-shape="arrowUp"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3 3 12h5v9h8v-9h5z"/></svg></button>
+                <button type="button" class="signal-type-shape-option" role="radio" aria-label="Arrow down" title="Arrow down" data-marker-shape="arrowDown"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 3h8v9h5l-9 9-9-9h5z"/></svg></button>
+                <button type="button" class="signal-type-shape-option" role="radio" aria-label="Diamond" title="Diamond" data-marker-shape="diamond"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3 21 12 12 21 3 12z"/></svg></button>
+                <button type="button" class="signal-type-shape-option" role="radio" aria-label="Triangle up" title="Triangle up" data-marker-shape="triangleUp"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3 21 21H3z"/></svg></button>
+                <button type="button" class="signal-type-shape-option" role="radio" aria-label="Triangle down" title="Triangle down" data-marker-shape="triangleDown"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21 21 3H3z"/></svg></button>
+                <button type="button" class="signal-type-shape-option" role="radio" aria-label="Star" title="Star" data-marker-shape="star"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m12 2.5 2.7 5.6 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg></button>
+                <button type="button" class="signal-type-shape-option" role="radio" aria-label="Target" title="Target" data-marker-shape="target"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="2.5"/></svg></button>
+                <button type="button" class="signal-type-shape-option" role="radio" aria-label="Flag" title="Flag" data-marker-shape="flag"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 3v18h2v-7.6l8-.7-2.8-3.2L16 6 8 6.8V3z"/></svg></button>
+              </div>
+            </fieldset>
+            <div class="signal-type-marker-controls">
+              <label>Marker position <select name="marker_position"><option value="aboveBar">aboveBar</option><option value="belowBar">belowBar</option><option value="inBar">inBar</option></select></label>
+            </div>
+            <figure class="signal-type-marker-live-preview" aria-label="Live marker preview"><figcaption>Live marker preview</figcaption><svg viewBox="0 0 96 56" aria-hidden="true"><path class="signal-preview-wick" d="M18 7v35M48 12v33M78 5v38"/><path class="signal-preview-candle" d="M12 17h12v17H12zM42 18h12v15H42zM72 14h12v20H72z"/><g id="signal-type-marker-preview"></g></svg></figure>
+          </div>
+          <p id="signal-type-status" role="status" aria-live="polite"></p>
+          <div class="source-edit-actions"><button type="submit" class="source-edit-save">Save changes</button></div>
+        </section>
+        <section id="signal-type-panel-cards" role="tabpanel" aria-labelledby="signal-type-tab-cards" aria-hidden="true" hidden>
+          <p id="signal-card-status" role="status" aria-live="polite"></p>
+          <div id="signal-card-editor" hidden>
+            <div class="signal-card-workspace"><div class="signal-card-controls"><fieldset><legend>Compact card — up to three additional fields</legend><div id="signal-card-compact-fields" class="signal-card-field-list"></div></fieldset><fieldset><legend>Additional detailed fields</legend><div class="signal-card-add-field"><select id="signal-card-detail-choice" aria-label="Additional detailed field"></select><button id="signal-card-detail-add" type="button">Add field</button></div><ol id="signal-card-detail-fields" class="signal-card-detail-fields"></ol></fieldset><div class="source-edit-actions signal-card-actions"><button id="signal-card-save" type="button" class="source-edit-save">Save card layout</button></div></div><section class="signal-card-preview-panel" aria-label="Full card preview"><h3>Live full-card preview</h3><div id="signal-card-preview" class="signal-card-preview"></div></section></div>
+          </div>
+        </section>
+      </form>
+    </dialog>
+    {% endif %}
+  </body>
+</html>
