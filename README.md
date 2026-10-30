@@ -22,6 +22,28 @@ Universal Trading Dashboard — веб-приложение для визуал�
 
 8. **История сигналов** — просматривайте ранее полученные сигналы, находите события за определённые даты и изучайте их расположение на историческом графике.
 
+## Screenshots / Скриншоты
+
+### Dashboard overview / Обзор Dashboard
+
+![Dashboard overview](screenshots/dashboard-overview.png)
+
+### Signal Sources / Источники сигналов
+
+![Signal Sources settings](screenshots/signal-sources.png)
+
+### Signal Types / Типы сигналов
+
+![Signal Types settings](screenshots/signal-types.png)
+
+### Signal Appearance / Внешний вид сигнала
+
+![Signal appearance settings](screenshots/signal-appearance.png)
+
+### Signal Card Layout / Макет карточки сигнала
+
+![Signal card layout settings](screenshots/signal-card-layout.png)
+
 ## Требования
 
 - Linux VPS с доступом по SSH;
